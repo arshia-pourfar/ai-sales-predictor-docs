@@ -11,6 +11,7 @@ export function Navigation() {
         { href: '/docs', label: 'Docs' },
         { href: '/demo', label: 'Demo' },
         { href: '/playground', label: 'Playground' },
+        { href: '/register', label: 'register' },
     ];
 
     return (
