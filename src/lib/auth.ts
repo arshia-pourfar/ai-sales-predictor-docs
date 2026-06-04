@@ -1,7 +1,6 @@
 import { prisma } from './prisma';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { v4 as uuidv4 } from 'uuid';
 import crypto from 'crypto';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-in-production';
@@ -137,4 +136,53 @@ export async function validateApiKey(apiKey: string) {
 // چک دسترسی به endpoint خاص
 export function checkPermission(userRole: string, requiredRoles: string[]): boolean {
     return requiredRoles.includes(userRole);
+}
+
+// ===== Password Reset =====
+const RESET_TOKEN_HOURS = 1;
+
+export function generatePasswordResetToken(): string {
+    return crypto.randomBytes(32).toString('hex');
+}
+
+export async function createPasswordResetToken(email: string): Promise<string | null> {
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user) return null;
+
+    await prisma.passwordResetToken.deleteMany({
+        where: { userId: user.id, usedAt: null },
+    });
+
+    const token = generatePasswordResetToken();
+    const expiresAt = new Date(Date.now() + RESET_TOKEN_HOURS * 60 * 60 * 1000);
+
+    await prisma.passwordResetToken.create({
+        data: { userId: user.id, token, expiresAt },
+    });
+
+    return token;
+}
+
+export async function resetPasswordWithToken(token: string, newPassword: string): Promise<void> {
+    const record = await prisma.passwordResetToken.findUnique({
+        where: { token },
+        include: { user: true },
+    });
+
+    if (!record || record.usedAt || record.expiresAt < new Date()) {
+        throw new Error('Invalid or expired reset link');
+    }
+
+    const hashedPassword = await hashPassword(newPassword);
+
+    await prisma.$transaction([
+        prisma.user.update({
+            where: { id: record.userId },
+            data: { password: hashedPassword },
+        }),
+        prisma.passwordResetToken.update({
+            where: { id: record.id },
+            data: { usedAt: new Date() },
+        }),
+    ]);
 }

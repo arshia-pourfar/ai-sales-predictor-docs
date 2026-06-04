@@ -22,6 +22,17 @@ model User {
   apiKeys       ApiKey[]
   sessions      Session[]
   usageLogs     UsageLog[]
+  passwordResets PasswordResetToken[]
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
 }
 
 model ApiKey {

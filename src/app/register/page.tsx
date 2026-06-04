@@ -1,7 +1,10 @@
 'use client';
 import { useState } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 export default function RegisterPage() {
+    const router = useRouter();
     const [form, setForm] = useState({ email: '', username: '', password: '' });
     const [apiKey, setApiKey] = useState('');
     const [loading, setLoading] = useState(false);
@@ -23,6 +26,15 @@ export default function RegisterPage() {
 
             if (data.status === 'success') {
                 setApiKey(data.data.apiKey);
+                const loginRes = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: form.email, password: form.password }),
+                    credentials: 'include',
+                });
+                if (loginRes.ok) {
+                    setTimeout(() => router.push('/dashboard'), 2000);
+                }
             } else {
                 setError(data.message || 'Registration failed');
             }
@@ -50,7 +62,13 @@ export default function RegisterPage() {
                         <code className="bg-black px-4 py-2 rounded text-green-400 text-sm select-all block mb-4 break-all">
                             {apiKey}
                         </code>
-                        <p className="text-text-secondary text-sm">Save this key! It won&apos;t be shown again.</p>
+                        <p className="text-text-secondary text-sm mb-4">Save this key! It won&apos;t be shown again.</p>
+                        <Link
+                            href="/dashboard"
+                            className="inline-block bg-accent hover:bg-accent-hover text-white font-semibold px-6 py-2 rounded-lg"
+                        >
+                            Go to Dashboard →
+                        </Link>
                     </div>
                 ) : (
                     <form onSubmit={handleSubmit} className="space-y-4">
@@ -87,6 +105,13 @@ export default function RegisterPage() {
                         </button>
                     </form>
                 )}
+
+                <p className="text-text-secondary text-sm mt-6 text-center">
+                    Already have an account?{' '}
+                    <Link href="/login" className="text-accent hover:underline">
+                        Sign in
+                    </Link>
+                </p>
             </div>
         </div>
     );

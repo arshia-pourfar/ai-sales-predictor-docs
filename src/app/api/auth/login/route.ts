@@ -6,6 +6,13 @@ export async function POST(request: Request) {
     try {
         const { email, password } = await request.json();
 
+        if (!email || !password) {
+            return NextResponse.json(
+                { status: 'error', message: 'Email and password are required' },
+                { status: 400 }
+            );
+        }
+
         const user = await prisma.user.findUnique({
             where: { email },
             include: { apiKeys: { where: { isActive: true }, take: 1 } },
@@ -20,17 +27,30 @@ export async function POST(request: Request) {
 
         const token = generateToken(user.id, user.role);
 
-        return NextResponse.json({
+        const response = NextResponse.json({
             status: 'success',
             data: {
                 token,
                 apiKey: user.apiKeys[0]?.key || null,
                 role: user.role,
+                email: user.email,
+                username: user.username,
             },
         });
-    } catch (error: any) {
+
+        response.cookies.set('auth_token', token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            maxAge: 7 * 24 * 60 * 60,
+            path: '/',
+        });
+
+        return response;
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : 'Login failed';
         return NextResponse.json(
-            { status: 'error', message: error.message },
+            { status: 'error', message },
             { status: 500 }
         );
     }

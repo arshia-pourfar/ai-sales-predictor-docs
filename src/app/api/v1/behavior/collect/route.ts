@@ -76,11 +76,13 @@ export async function POST(request: Request) {
             const controller = new AbortController();
             const timeout = setTimeout(() => controller.abort(), 5000); // ۵ ثانیه timeout
 
+            const apiKey = body.api_key || request.headers.get('authorization')?.replace(/^Bearer\s+/i, '') || '';
+
             const aiResponse = await fetch(`${AI_ENGINE_URL}/api/v1/behavior/collect`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-API-Key': body.api_key || '',
+                    ...(apiKey ? { Authorization: `Bearer ${apiKey}`, 'X-API-Key': apiKey } : {}),
                 },
                 body: JSON.stringify(body),
                 signal: controller.signal,
